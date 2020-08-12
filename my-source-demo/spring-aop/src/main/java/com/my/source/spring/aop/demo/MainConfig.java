@@ -1,6 +1,7 @@
 package com.my.source.spring.aop.demo;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
@@ -12,15 +13,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
  */
 @EnableAspectJAutoProxy
 @Configuration
+@ComponentScan(basePackages = {"com.my.source.spring.aop.demo"})
 public class MainConfig {
 
-    @Bean
-    public Calculator calculator(){
-        return new MyCalculator();
-    }
-
-    @Bean
-    public CalculatorAspect calculatorAspect(){
-        return new CalculatorAspect();
-    }
 }

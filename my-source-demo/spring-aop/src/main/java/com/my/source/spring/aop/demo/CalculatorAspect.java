@@ -8,6 +8,7 @@ import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 
@@ -18,9 +19,10 @@ import java.util.Arrays;
  * @since 1.0
  */
 @Aspect
+@Component
 public class CalculatorAspect {
 
-    @Pointcut(value = "execution(* com.my.source.spring.aop.demo.MyCalculator.*(..))")
+    @Pointcut(value = "execution(* com.my.source.spring.aop.demo.*.*(..))")
     public void pointCut() {
     }
 

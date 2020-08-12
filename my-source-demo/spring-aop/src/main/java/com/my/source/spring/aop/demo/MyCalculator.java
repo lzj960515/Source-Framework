@@ -1,5 +1,8 @@
 package com.my.source.spring.aop.demo;
 
+import com.my.source.spring.aop.demo.inte.Calculator;
+import org.springframework.stereotype.Component;
+
 import java.math.BigDecimal;
 
 /**
@@ -8,6 +11,7 @@ import java.math.BigDecimal;
  * @author Zijian Liao
  * @since 1.0
  */
+@Component
 public class MyCalculator implements Calculator {
 
     @Override

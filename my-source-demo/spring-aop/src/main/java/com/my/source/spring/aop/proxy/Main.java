@@ -6,6 +6,8 @@ import com.my.source.spring.aop.proxy.jdkproxy.LandlordImpl;
 import com.my.source.spring.aop.proxy.jdkproxy.LandlordProxy;
 import com.my.source.spring.aop.proxy.jdkproxy.ProxyFactory;
 
+import java.lang.reflect.Proxy;
+
 /**
  * 测试代理
  *
@@ -15,7 +17,9 @@ import com.my.source.spring.aop.proxy.jdkproxy.ProxyFactory;
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        Landlord landlord =  ProxyFactory.createProxyObject(new LandlordImpl(), Landlord.class, LandlordProxy.class);
+//        Landlord landlord =  ProxyFactory.createProxyObject(new LandlordImpl(), Landlord.class, LandlordProxy.class);
+        LandlordImpl landlordImpl = new LandlordImpl();
+        Landlord landlord = (Landlord) Proxy.newProxyInstance(LandlordImpl.class.getClassLoader(), LandlordImpl.class.getInterfaces(),new LandlordProxy(landlordImpl));
 //        Landlord landlord = (Landlord) CglibProxyFactory.newCglibProxy(new LandlordProxy(), Landlord.class);
         landlord.rent();
         landlord.rentCollection();

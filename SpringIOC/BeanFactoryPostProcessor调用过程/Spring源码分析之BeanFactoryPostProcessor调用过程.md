@@ -1,5 +1,18 @@
 # Spring源码分析之`BeanFactoryPostProcessor`调用过程
 
+前文传送门：
+
+1. [Spring源码分析之预启动流程](https://mp.weixin.qq.com/s/bfbPJOlYo2Vz2UTSMWRGkw)
+2. [Spring源码分析之BeanFactory体系结构](https://mp.weixin.qq.com/s/FDx0hmCp7dEfw5wzhS3fNA)
+
+本文内容：
+
+1. `AbstractApplicationContext#refresh`前部分的一点小内容
+2. `BeanFactoryPostProcessor`调用过程详解
+3. `mybatis`是如何使用本节知识整合spring的？
+
+正文：
+
 在Spring中，一共分为`BeanFactoryPostProcessor`和`BeanPostProcessor`两类后置处理器，他们主要的职责如下：
 
 - `BeanFactoryPostProcessor`：负责`beanClass`到`beanDefinition`的过程，包括但不限于寻找合适的`beanClass`，创建`beanDefinition`，修改`beanDefinition`，将`beanDefinition`注册到`BeanFactory`中
@@ -19,7 +32,7 @@ prepareRefresh();
 // 由于web项目中并不会先引入DefaultListableBeanFactory，在这里通知子类刷新BeanFactory
 // 而我们是使用new AnnotationConfigApplicationContext()的方式，就是直接返回之前引入的DefaultListableBeanFactory
 ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
-// 准备工作，给DefaultListableBeanFactory加点料
+// 准备工作，给DefaultListableBeanFactory填充属性
 prepareBeanFactory(beanFactory);
 // 留于子类调用的扩展方法
 postProcessBeanFactory(beanFactory);
@@ -84,7 +97,7 @@ String[] postProcessorNames =
 for (String ppName : postProcessorNames) {
     //ConfigurationClassPostProcessor同样实现了PriorityOrdered接口
     if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
-        //注意getBean方法，生产了ConfigurationClassPostProcessor,放到currentRegistryProcessors集合中
+        //注意这里调用了getBean方法，生产了ConfigurationClassPostProcessor,放到currentRegistryProcessors集合中
         currentRegistryProcessors.add(beanFactory.getBean(ppName, BeanDefinitionRegistryPostProcessor.class));
         processedBeans.add(ppName);
     }
@@ -268,6 +281,7 @@ for (AnnotationAttributes componentScan : componentScans) {
 ```java
 public Set<BeanDefinitionHolder> parse(AnnotationAttributes componentScan, final String declaringClass) {
     //重新new了一个classpath的bean定义扫描器，没用我们最开始创建的
+    // 这里添加了一个默认的过滤器，过滤@Component注解的
     ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(this.registry,
                                                                         componentScan.getBoolean("useDefaultFilters"), this.environment, this.resourceLoader);
     //添加自己配置的过滤器
@@ -313,7 +327,7 @@ protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
     Assert.notEmpty(basePackages, "At least one base package must be specified");
     Set<BeanDefinitionHolder> beanDefinitions = new LinkedHashSet<>();
     for (String basePackage : basePackages) {
-        //找到所有候选的bean -> 标识了@Component注解的
+        //找到所有候选的bean -> 默认过滤器为过滤标识了@Component注解的class
         Set<BeanDefinition> candidates = findCandidateComponents(basePackage);
         for (BeanDefinition candidate : candidates) {
             String beanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
@@ -626,3 +640,175 @@ invokeBeanFactoryPostProcessors(nonOrderedPostProcessors, beanFactory);
 - `ScannedGenericBeanDefinition`：通过@Component扫描包引入的Bean
 - `ConfigurationClassBeanDefinition`：通过@Bean注解引入的Bean
 - `RootBeanDefinition`：Spring内部使用，如生产Bean时将其他`BeanDefinition`转成`RootBeanDefinition`
+
+## Mybatis 如何整合 Spring的?
+
+> 此节知识为概要知识，具体内容将放在Mybatis源码系列详细说明
+
+先带大家理理思路~
+
+我们知道，在Spring中是可以通过扫描的方式扫描出标识了`@Component`注解的class注册到容器中，并且该class不能为一个接口类(忘了请看上面的扫描逻辑)，而我们的`mapper`通常又是一个接口类，这是默认不允许被注册的。那么该如何解决这个问题呢？
+
+思考：既然默认不允许是接口类，那么我们是否可以自定义一个扫码器继承Spring的扫描器，然后重写其中判断是否为接口类的逻辑，这样，我们不就可以使用我们自定义的扫描器去扫描包就可以了吗？
+
+问题2：假设上面的方法可行，但是我们扫描出来的`BeanDefintion`是个接口，接口是不能被实例化的，那在后面我们`createBean`中的实例化步骤又该如何解决呢？
+
+思考：我们知道其实我们的`mapper`在`mybatis`中本来就是个接口，我们创建时是通过`sqlSessionTemplate.getMapper()`的方式创建的，这里其实是生成了一个代理类返回给我们，那我们应该如何将这个代理类给接到Spring的`createBean`过程中呢，如何接过去了岂不是就万事大吉？
+
+小知识：嘿，不知道大家还记不记的我们的`bean`里有一种特殊的`bean`称为`FactoryBean`，我们这个`FactoryBean`最后从容器中获取出来时其实是先拿到这个`FactoryBean`，然后调用它的`getObject()`方法返回我们真正需要的`bean`
+
+思考：知道这个之后，那么我们是不是可以使用`FactoryBean`，然后将扫描出来的接口(mapper)放到`FactoryBean`的属性中，最后从容器中获取时只要这样：
+
+```java
+public class FactoryBean{
+    private Class mapper;
+    public Object getObject(){
+        sqlSessionTemplate.getMappper(mapper);
+    }
+}
+```
+
+嘿，看看是不是好像搞定啦~
+
+现在问题好像都已经解决了，那剩下的就是怎么让Spring在启动的时候调用我们的自定义扫描器呢？我们现在就来看看源码吧
+
+### @MapperScan
+
+`Mybatis`整合`Spring`当然是从`@MapperScan`注解看起，因为我们通常情况只加这个注解就可以了
+
+@MapperScan简要内容如下
+
+```java
+// 组合注解，组合了@Import注解，再通过@Import注解导入了MapperScannerRegistrar类
+@Import(MapperScannerRegistrar.class)
+public @interface MapperScan{
+	// 包路径
+	String[] basePackages() default {}
+}
+```
+
+### MapperScannerRegistrar
+
+```java
+// 实现的是ImportBeanDefinitionRegistrar接口
+public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware{
+    
+}
+```
+
+registerBeanDefinitions
+
+```java
+@Override
+public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+	// 从元数据中拿到@MapperScan的信息
+    AnnotationAttributes annoAttrs = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(MapperScan.class.getName()));
+    // 实例化一个自定义的扫描器
+    ClassPathMapperScanner scanner = new ClassPathMapperScanner(registry);
+	
+    // 下面都是些属性填充，由于一般我们只配一个包路径，所以下面除了包路径，其他都是null
+    if (resourceLoader != null) {
+        scanner.setResourceLoader(resourceLoader);
+    }
+
+    Class<? extends Annotation> annotationClass = annoAttrs.getClass("annotationClass");
+    if (!Annotation.class.equals(annotationClass)) {
+        scanner.setAnnotationClass(annotationClass);
+    }
+
+    Class<?> markerInterface = annoAttrs.getClass("markerInterface");
+    if (!Class.class.equals(markerInterface)) {
+        scanner.setMarkerInterface(markerInterface);
+    }
+
+    Class<? extends BeanNameGenerator> generatorClass = annoAttrs.getClass("nameGenerator");
+    if (!BeanNameGenerator.class.equals(generatorClass)) {
+        scanner.setBeanNameGenerator(BeanUtils.instantiateClass(generatorClass));
+    }
+
+    Class<? extends MapperFactoryBean> mapperFactoryBeanClass = annoAttrs.getClass("factoryBean");
+    if (!MapperFactoryBean.class.equals(mapperFactoryBeanClass)) {
+        scanner.setMapperFactoryBean(BeanUtils.instantiateClass(mapperFactoryBeanClass));
+    }
+
+    scanner.setSqlSessionTemplateBeanName(annoAttrs.getString("sqlSessionTemplateRef"));
+    scanner.setSqlSessionFactoryBeanName(annoAttrs.getString("sqlSessionFactoryRef"));
+
+    List<String> basePackages = new ArrayList<String>();
+    for (String pkg : annoAttrs.getStringArray("value")) {
+        if (StringUtils.hasText(pkg)) {
+            basePackages.add(pkg);
+        }
+    }
+    for (String pkg : annoAttrs.getStringArray("basePackages")) {
+        if (StringUtils.hasText(pkg)) {
+            basePackages.add(pkg);
+        }
+    }
+    for (Class<?> clazz : annoAttrs.getClassArray("basePackageClasses")) {
+        basePackages.add(ClassUtils.getPackageName(clazz));
+    }
+    // 注册自定义的过滤器，我们啥也没配，所以扫描出来的所以接口都通过
+    scanner.registerFilters();
+    // 开始扫描
+    scanner.doScan(StringUtils.toStringArray(basePackages));
+}
+```
+
+scanner.registerFilters中的有效片段
+
+```java
+// 添加一个直接返回true的过滤器
+addIncludeFilter(new TypeFilter() {
+    @Override
+    public boolean match(MetadataReader metadataReader, MetadataReaderFactory metadataReaderFactory) throws IOException {
+        return true;
+    }
+});
+```
+
+doScan
+
+```java
+public Set<BeanDefinitionHolder> doScan(String... basePackages) {
+    // 直接走的就是Spring的扫描逻辑了，但现在过滤器只有一个默认全放行的
+    Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
+
+    if (beanDefinitions.isEmpty()) {
+        logger.warn("No MyBatis mapper was found in '" + Arrays.toString(basePackages) + "' package. Please check your configuration.");
+    } else {
+		// 处理扫描出来的BeanDefinition，这里就是我们思考中搞成`FactoryBean`的逻辑
+        processBeanDefinitions(beanDefinitions);
+    }
+    return beanDefinitions;
+}
+```
+
+我们思考中重写的扫描逻辑
+
+```java
+@Override
+protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
+    // 放行是接口的类
+    return beanDefinition.getMetadata().isInterface() && beanDefinition.getMetadata().isIndependent();
+}
+```
+
+摘取processBeanDefinitions中的代码片段
+
+```java
+private void processBeanDefinitions(Set<BeanDefinitionHolder> beanDefinitions) {
+    GenericBeanDefinition definition;
+    for (BeanDefinitionHolder holder : beanDefinitions) {
+        definition = (GenericBeanDefinition) holder.getBeanDefinition();
+        // 将原来的接口mapper放到beanDefintion的构造方法参数中，以指定的构造方法实例化
+  definition.getConstructorArgumentValues().addGenericArgumentValue(definition.getBeanClassName()); 
+        // 注意这里：将原来的beanClass替换成FactoryBean了！
+        definition.setBeanClass(this.mapperFactoryBean.getClass());
+    }
+}
+```
+
+Mybatis整合Spring的过程大致就是这些了
+
+> 本文内容就是以上这些了，希望小伙伴们有所收获，有问题的小伙伴欢迎在下方留言哦

@@ -1,6 +1,6 @@
 # 什么是BeanFactory？
 
-提到Spring，总是让人第一时间想起IOC容器，而IOC容器的顶层核心接口就是我们的`BeanFactory`，如果能够理解`BeanFactory`的体系结构想必能让我们对Spring整体脉络有更加清晰的认知，所以，本文的探究方向主要为以下几点：
+提到Spring，自然而然的让人第一时间想到的就是它的核心--IOC容器，而IOC容器的顶层核心接口就是我们的`BeanFactory`，如果能够理解`BeanFactory`的体系结构想必能让我们对Spring整体脉络有更加清晰的认知，所以，本文的探究方向主要为以下几点：
 
 - `BeanFactory`的体系结构是怎样的？
 - `Bean`的元信息从何而来？
@@ -126,7 +126,7 @@ this.beanDefinitionNames.add(beanName);
 } 
 ```
 
-而非配置的`Bean`是通过在预启动时注册的配置类后置处理器`ConfigurationClassPostProcessor#processConfigBeanDefinitions`中完成的，以下代码为`ClassPathBeanDefinitionScanner#doScan`中的摘要部分，详细调用链将在后面的文章进行说明
+而其他的`Bean`是通过在预启动时注册的配置类后置处理器`ConfigurationClassPostProcessor#processConfigBeanDefinitions`中完成的，以下代码为`ClassPathBeanDefinitionScanner#doScan`中的摘要部分，详细调用链将在后面的文章进行说明
 
 ```java
 //传入我们配置类的包路径
@@ -249,11 +249,11 @@ default Map<String, Object> getAnnotationAttributes(String annotationName,
 }
 ```
 
-> 以上为扫描@Component注解类进行解析元数据填充属性的逻辑，在配置类中以@Bean方式注册的BeanDefinition填充属性过程在ConfigurationClassBeanDefinitionReader.loadBeanDefinitions(configClasses)
+> 以上为解析配置类的@ComponentScan注解时创建BeanDefinition的逻辑，解析@Import和@Bean的过程将会放到下篇文章详细说明
 
 ## `BeanFactory`生产`Bean`的过程是怎样的？
 
-现在，我们已经知道了一个`BeanDefinition`的具体结构以及是如何产生并注册到`BeanFactory`的，那么`BeanFactory`又是如何使用它生产`Bean`的呢？以下附上`createBean`的粗略流程图，具体细节将放在IOC容器启动流程中详细说明
+现在，我们已经知道了一个`BeanDefinition`的具体结构以及是如何产生并注册到`BeanFactory`的，那么`BeanFactory`又是如何使用它生产`Bean`的呢？以下附上`createBean`的粗略流程图，具体细节将放在往后的文章进行详细说明
 
 ![](createBean.png)
 

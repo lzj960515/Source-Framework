@@ -1,11 +1,12 @@
-package com.my.spring.demo;
+package com.my.spring.gooddemo;
 
 /**
  * @author Zijian Liao
  * @since 1.0.0
  */
-public class HongQiCar {
+public class HongQiCar implements Car {
 
+    @Override
     public void run(){
         System.out.println("hongqi running");
     }

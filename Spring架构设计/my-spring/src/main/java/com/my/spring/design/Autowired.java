@@ -1,7 +1,15 @@
-package com.my.spring.design;/**
- * 
- *
+package com.my.spring.design;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
  * @author Zijian Liao
  * @since 1.0.0
- */public @interface Autowired {
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Autowired {
 }

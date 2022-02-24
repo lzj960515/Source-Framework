@@ -1,23 +1,20 @@
-package com.my.spring.test.demo;
+package com.my.spring.example;
 
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.ComponentScan;
+
+import com.my.spring.design.ApplicationContext;
+import com.my.spring.design.ComponentScan;
 
 /**
  * @author Zijian Liao
  * @since 1.0.0
  */
-// 告诉Spring从哪个包下扫描Bean，不写就是当前包路径
-@ComponentScan(basePackages = "com.my.spring.test.demo")
+@ComponentScan(basePackages = "com.my.spring.example")
 public class Main {
 
 	public static void main(String[] args) {
-		// 将Main(配置信息)传入到ApplicationContext(IoC容器)中
-		ApplicationContext context = new AnnotationConfigApplicationContext(Main.class);
-		// 从(IoC容器)中获取到我们的boy
+		ApplicationContext context = new ApplicationContext(Main.class);
 		Boy boy = (Boy) context.getBean("boy");
-		// 开车
 		boy.driver();
+		System.out.println();
 	}
 }

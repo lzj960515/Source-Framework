@@ -1,12 +1,12 @@
-package com.my.spring.test.demo;
+package com.my.spring.example;
 
-import org.springframework.stereotype.Component;
+import com.my.spring.design.Component;
 
 /**
  * @author Zijian Liao
  * @since 1.0.0
  */
-//@Component
+@Component
 public class HongQiCar implements Car {
 
 	@Override

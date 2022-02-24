@@ -1,4 +1,4 @@
-package com.my.spring.test.demo;
+package com.my.spring.example;
 
 /**
  * @author Zijian Liao

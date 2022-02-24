@@ -1,7 +1,8 @@
-package com.my.spring.test.demo;
+package com.my.spring.example;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+
+import com.my.spring.design.Autowired;
+import com.my.spring.design.Component;
 
 /**
  * @author Zijian Liao
